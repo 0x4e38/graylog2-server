@@ -20,6 +20,7 @@ import com.floreysoft.jmte.Engine;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import org.graylog2.Configuration;
+import org.graylog2.configuration.HttpConfiguration;
 import org.graylog2.rest.MoreMediaTypes;
 import org.graylog2.rest.RestTools;
 
@@ -34,14 +35,19 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import static java.util.Objects.requireNonNull;
+
 @Path("/config.js")
 public class AppConfigResource {
     private static final Engine engine = new Engine();
     private final Configuration configuration;
+    private final HttpConfiguration httpConfiguration;
 
     @Inject
-    public AppConfigResource(Configuration configuration) {
-        this.configuration = configuration;
+    public AppConfigResource(Configuration configuration,
+                             HttpConfiguration httpConfiguration) {
+        this.configuration = requireNonNull(configuration, "configuration");
+        this.httpConfiguration = requireNonNull(httpConfiguration, "httpConfiguration");
     }
 
     @GET
@@ -57,8 +63,8 @@ public class AppConfigResource {
 
         final Map<String, Object> model = ImmutableMap.of(
             "rootTimeZone", configuration.getRootTimeZone(),
-            "serverUri", RestTools.buildEndpointUri(headers, configuration.getWebEndpointUri()),
-            "appPathPrefix", configuration.getWebPrefix());
+            "serverUri", RestTools.buildEndpointUri(headers, httpConfiguration.getWebEndpointUri()),
+            "appPathPrefix", httpConfiguration.getWebPrefix());
         return engine.transform(template, model);
     }
 }
