@@ -23,7 +23,7 @@ const BABELLOADER = { loader: 'babel-loader', options: BABELOPTIONS };
 
 const webpackConfig = {
   name: 'app',
-  dependencies: 'vendor',
+  dependencies: ['vendor'],
   entry: {
     app: APP_PATH,
     polyfill: ['babel-polyfill'],
