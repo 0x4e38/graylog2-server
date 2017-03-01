@@ -20,6 +20,7 @@ import com.floreysoft.jmte.Engine;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import org.graylog2.configuration.HttpConfiguration;
+import org.graylog2.rest.RestTools;
 import org.graylog2.shared.rest.resources.RestResource;
 
 import javax.activation.MimetypesFileTypeMap;
@@ -30,6 +31,7 @@ import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -43,20 +45,20 @@ import static java.util.Objects.requireNonNull;
 @Path("/api-browser")
 public class DocumentationBrowserResource extends RestResource {
     private final MimetypesFileTypeMap mimeTypes;
-    private final String apiPrefix;
+    private final HttpConfiguration httpConfiguration;
 
     private final ClassLoader classLoader = ClassLoader.getSystemClassLoader();
     private final Engine engine = new Engine();
 
     @Inject
-    public DocumentationBrowserResource(MimetypesFileTypeMap mimeTypes, HttpConfiguration configuration) {
+    public DocumentationBrowserResource(MimetypesFileTypeMap mimeTypes, HttpConfiguration httpConfiguration) {
         this.mimeTypes = requireNonNull(mimeTypes);
-        this.apiPrefix = configuration.getRestListenUri().getPath();
+        this.httpConfiguration = requireNonNull(httpConfiguration);
     }
 
     @GET
-    public Response root() throws IOException {
-        final String index = index();
+    public Response root(@Context HttpHeaders httpHeaders) throws IOException {
+        final String index = index(httpHeaders);
         return Response.ok(index, MediaType.TEXT_HTML_TYPE)
                 .header(HttpHeaders.CONTENT_LENGTH, index.length())
                 .build();
@@ -65,10 +67,11 @@ public class DocumentationBrowserResource extends RestResource {
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Path("index.html")
-    public String index() throws IOException {
+    public String index(@Context HttpHeaders httpHeaders) throws IOException {
         final URL templateUrl = this.getClass().getResource("/swagger/index.html.template");
         final String template = Resources.toString(templateUrl, StandardCharsets.UTF_8);
-        final Map<String, Object> model = ImmutableMap.of("apiPrefix", apiPrefix);
+        final Map<String, Object> model = ImmutableMap.of(
+                "baseUri", RestTools.buildExternalUri(httpHeaders.getRequestHeaders(), httpConfiguration.getHttpExternalUri()).resolve(HttpConfiguration.PATH_API).toString());
         return engine.transform(template, model);
     }
 

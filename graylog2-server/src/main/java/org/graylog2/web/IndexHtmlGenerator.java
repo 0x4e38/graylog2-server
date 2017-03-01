@@ -20,35 +20,58 @@ import com.floreysoft.jmte.Engine;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import org.graylog2.configuration.HttpConfiguration;
+import org.graylog2.rest.RestTools;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+
+import static java.util.Objects.requireNonNull;
 
 @Singleton
 public class IndexHtmlGenerator {
-    private static final String title = "Graylog Web Interface";
-    private final String content;
+    private final String template;
+    private final List<String> cssFiles;
+    private final List<String> sortedJsFiles;
+    private final Engine engine;
+    private final HttpConfiguration httpConfiguration;
 
     @Inject
-    public IndexHtmlGenerator(PluginAssets pluginAssets) throws IOException {
-        final URL templateUrl = this.getClass().getResource("/web-interface/index.html.template");
-        final String template = Resources.toString(templateUrl, StandardCharsets.UTF_8);
-        final Map<String, Object> model = ImmutableMap.<String, Object>builder()
-                .put("title", title)
-                .put("cssFiles", pluginAssets.cssFiles())
-                .put("jsFiles", pluginAssets.sortedJsFiles())
-                .put("appPrefix", HttpConfiguration.PATH_WEB)
-                .build();
-
-        final Engine engine = new Engine();
-        this.content = engine.transform(template, model);
+    public IndexHtmlGenerator(final PluginAssets pluginAssets,
+                              final HttpConfiguration httpConfiguration) throws IOException {
+        this(
+                Resources.toString(Resources.getResource("web-interface/index.html.template"), StandardCharsets.UTF_8),
+                pluginAssets.cssFiles(),
+                pluginAssets.sortedJsFiles(),
+                new Engine(),
+                httpConfiguration);
     }
 
-    public String get() {
-        return this.content;
+    public IndexHtmlGenerator(final String template,
+                              final List<String> cssFiles,
+                              final List<String> sortedJsFiles,
+                              final Engine engine,
+                              final HttpConfiguration httpConfiguration) throws IOException {
+        this.template = requireNonNull(template, "template");
+        this.cssFiles = requireNonNull(cssFiles, "cssFiles");
+        this.sortedJsFiles = requireNonNull(sortedJsFiles, "sortedJsFiles");
+        this.engine = requireNonNull(engine, "engine");
+        this.httpConfiguration = requireNonNull(httpConfiguration, "httpConfiguration");
+
+        this.engine.setUseCompilation(true);
+    }
+
+    public String get(MultivaluedMap<String, String> headers) {
+        final Map<String, Object> model = ImmutableMap.<String, Object>builder()
+                .put("title", "Graylog Web Interface")
+                .put("cssFiles", cssFiles)
+                .put("jsFiles", sortedJsFiles)
+                .put("baseUri", RestTools.buildExternalUri(headers, httpConfiguration.getHttpExternalUri()))
+                .build();
+        return engine.transform(template, model);
     }
 }
