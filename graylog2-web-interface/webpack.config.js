@@ -102,7 +102,6 @@ if (TARGET === 'start') {
       hotUpdateMainFilename: 'hot-update.json',
     },
     plugins: [
-      new webpack.HotModuleReplacementPlugin(),
       new webpack.NamedModulesPlugin(),
       new webpack.DefinePlugin({DEVELOPMENT: true}),
     ],
